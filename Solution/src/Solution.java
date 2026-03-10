@@ -1,49 +1,44 @@
 import java.util.*;
 
-class DNSEntry{
-    String ip;
-    long expiry;
-
-    DNSEntry(String ip,long expiry){
-        this.ip=ip;
-        this.expiry=expiry;
-    }
-}
-
 public class Solution{
 
-    static HashMap<String,DNSEntry> cache = new HashMap<>();
+    static HashMap<String, Set<Integer>> ngramTable = new HashMap<>();
 
-    static String resolve(String domain){
+    static void storeDocument(int id, String text) {
 
-        long now = System.currentTimeMillis();
+        String[] words = text.split(" ");
 
-        if(cache.containsKey(domain)){
+        for (int i = 0; i < words.length - 2; i++) {
 
-            DNSEntry entry = cache.get(domain);
+            String gram = words[i] + " " + words[i + 1] + " " + words[i + 2];
 
-            if(entry.expiry > now){
-                System.out.println("Cache HIT");
-                return entry.ip;
-            }
-            else{
-                System.out.println("Cache EXPIRED");
-                cache.remove(domain);
-            }
+            ngramTable.putIfAbsent(gram, new HashSet<>());
+            ngramTable.get(gram).add(id);
         }
-
-        System.out.println("Cache MISS");
-
-        String ip="172.217.14.206";
-
-        cache.put(domain,new DNSEntry(ip, now + 300000));
-
-        return ip;
     }
 
-    public static void main(String[] args){
+    static void findMatches(String text) {
 
-        System.out.println(resolve("google.com"));
-        System.out.println(resolve("google.com"));
+        String[] words = text.split(" ");
+
+        for (int i = 0; i < words.length - 2; i++) {
+
+            String gram = words[i] + " " + words[i + 1] + " " + words[i + 2];
+
+            if (ngramTable.containsKey(gram)) {
+
+                for (int id : ngramTable.get(gram)) {
+                    System.out.println("Match found with document " + id);
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+
+        storeDocument(1, "data structures and algorithms are important");
+        storeDocument(2, "machine learning and data structures");
+
+        findMatches("data structures and algorithms");
     }
 }
