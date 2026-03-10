@@ -1,87 +1,91 @@
 import java.util.*;
 
-public class Solution {
+class Event {
+    String url;
+    String userId;
+    String source;
 
-    // n-gram -> documents containing it
-    static HashMap<String, Set<String>> ngramIndex = new HashMap<>();
+    Event(String url, String userId, String source) {
+        this.url = url;
+        this.userId = userId;
+        this.source = source;
+    }
+}
 
-    static int N = 5; // 5-gram
+public class Solution{
 
-    // Generate n-grams
-    public static List<String> generateNgrams(String text) {
-        String[] words = text.split("\\s+");
-        List<String> ngrams = new ArrayList<>();
+    // pageUrl -> visit count
+    static HashMap<String, Integer> pageViews = new HashMap<>();
 
-        for (int i = 0; i <= words.length - N; i++) {
-            StringBuilder gram = new StringBuilder();
-            for (int j = 0; j < N; j++) {
-                gram.append(words[i + j]).append(" ");
-            }
-            ngrams.add(gram.toString().trim());
-        }
+    // pageUrl -> unique visitors
+    static HashMap<String, HashSet<String>> uniqueVisitors = new HashMap<>();
 
-        return ngrams;
+    // traffic source -> count
+    static HashMap<String, Integer> trafficSources = new HashMap<>();
+
+    // process event
+    static void processEvent(Event e) {
+
+        // count page views
+        pageViews.put(e.url, pageViews.getOrDefault(e.url, 0) + 1);
+
+        // track unique users
+        uniqueVisitors.putIfAbsent(e.url, new HashSet<>());
+        uniqueVisitors.get(e.url).add(e.userId);
+
+        // count traffic source
+        trafficSources.put(e.source, trafficSources.getOrDefault(e.source, 0) + 1);
     }
 
-    // Store document in index
-    public static void addDocument(String docName, String text) {
-        List<String> grams = generateNgrams(text);
+    // get top pages
+    static void getDashboard() {
 
-        for (String gram : grams) {
-            ngramIndex.putIfAbsent(gram, new HashSet<>());
-            ngramIndex.get(gram).add(docName);
-        }
-    }
+        System.out.println("Top Pages:");
 
-    // Analyze document for plagiarism
-    public static void analyzeDocument(String docName, String text) {
+        List<Map.Entry<String, Integer>> list =
+                new ArrayList<>(pageViews.entrySet());
 
-        List<String> grams = generateNgrams(text);
-        System.out.println("Extracted " + grams.size() + " n-grams");
+        list.sort((a, b) -> b.getValue() - a.getValue());
 
-        HashMap<String, Integer> matchCount = new HashMap<>();
+        int rank = 1;
 
-        for (String gram : grams) {
+        for (Map.Entry<String, Integer> entry : list) {
 
-            if (ngramIndex.containsKey(gram)) {
+            String page = entry.getKey();
+            int views = entry.getValue();
+            int unique = uniqueVisitors.get(page).size();
 
-                for (String doc : ngramIndex.get(gram)) {
-                    matchCount.put(doc, matchCount.getOrDefault(doc, 0) + 1);
-                }
+            System.out.println(rank + ". " + page +
+                    " - " + views + " views (" + unique + " unique)");
 
-            }
+            rank++;
+            if (rank > 10)
+                break;
         }
 
-        for (String doc : matchCount.keySet()) {
+        System.out.println("\nTraffic Sources:");
 
-            int matches = matchCount.get(doc);
-            double similarity = (matches * 100.0) / grams.size();
+        int total = 0;
+        for (int count : trafficSources.values())
+            total += count;
 
-            System.out.println("Found " + matches + " matching n-grams with \"" + doc + "\"");
+        for (String source : trafficSources.keySet()) {
 
-            System.out.printf("Similarity: %.1f%% ", similarity);
+            int count = trafficSources.get(source);
+            double percent = (count * 100.0) / total;
 
-            if (similarity > 50)
-                System.out.println("(PLAGIARISM DETECTED)");
-            else if (similarity > 10)
-                System.out.println("(suspicious)");
-            else
-                System.out.println("(safe)");
+            System.out.printf("%s: %.0f%%\n", source, percent);
         }
     }
 
     public static void main(String[] args) {
 
-        // existing documents
-        String essay1 = "machine learning improves systems by learning from data automatically";
-        String essay2 = "learning from data automatically improves machine intelligence systems";
+        processEvent(new Event("/article/breaking-news", "user_123", "google"));
+        processEvent(new Event("/article/breaking-news", "user_456", "facebook"));
+        processEvent(new Event("/sports/championship", "user_789", "google"));
+        processEvent(new Event("/sports/championship", "user_111", "direct"));
+        processEvent(new Event("/article/breaking-news", "user_999", "google"));
 
-        addDocument("essay_089.txt", essay1);
-        addDocument("essay_092.txt", essay2);
-
-        // new essay
-        String newEssay = "machine learning improves systems by learning from data automatically and helps automation";
-
-        analyzeDocument("essay_123.txt", newEssay);
+        getDashboard();
     }
 }
