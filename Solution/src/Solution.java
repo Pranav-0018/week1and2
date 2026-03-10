@@ -1,48 +1,87 @@
 import java.util.*;
 
-public class Solution{
+public class Solution {
 
-    static HashMap<String, String> shortToLong = new HashMap<>();
-    static HashMap<String, Integer> clickCount = new HashMap<>();
+    // n-gram -> documents containing it
+    static HashMap<String, Set<String>> ngramIndex = new HashMap<>();
 
-    static String shortenURL(String longURL) {
+    static int N = 5; // 5-gram
 
-        String shortURL = "url" + shortToLong.size();
+    // Generate n-grams
+    public static List<String> generateNgrams(String text) {
+        String[] words = text.split("\\s+");
+        List<String> ngrams = new ArrayList<>();
 
-        shortToLong.put(shortURL, longURL);
-        clickCount.put(shortURL, 0);
-
-        return shortURL;
-    }
-
-    static String redirect(String shortURL) {
-
-        if (shortToLong.containsKey(shortURL)) {
-
-            clickCount.put(shortURL, clickCount.get(shortURL) + 1);
-
-            return shortToLong.get(shortURL);
+        for (int i = 0; i <= words.length - N; i++) {
+            StringBuilder gram = new StringBuilder();
+            for (int j = 0; j < N; j++) {
+                gram.append(words[i + j]).append(" ");
+            }
+            ngrams.add(gram.toString().trim());
         }
 
-        return "URL not found";
+        return ngrams;
     }
 
-    static void printStats() {
+    // Store document in index
+    public static void addDocument(String docName, String text) {
+        List<String> grams = generateNgrams(text);
 
-        for (String key : clickCount.keySet()) {
-            System.out.println(key + " -> " + clickCount.get(key) + " clicks");
+        for (String gram : grams) {
+            ngramIndex.putIfAbsent(gram, new HashSet<>());
+            ngramIndex.get(gram).add(docName);
+        }
+    }
+
+    // Analyze document for plagiarism
+    public static void analyzeDocument(String docName, String text) {
+
+        List<String> grams = generateNgrams(text);
+        System.out.println("Extracted " + grams.size() + " n-grams");
+
+        HashMap<String, Integer> matchCount = new HashMap<>();
+
+        for (String gram : grams) {
+
+            if (ngramIndex.containsKey(gram)) {
+
+                for (String doc : ngramIndex.get(gram)) {
+                    matchCount.put(doc, matchCount.getOrDefault(doc, 0) + 1);
+                }
+
+            }
+        }
+
+        for (String doc : matchCount.keySet()) {
+
+            int matches = matchCount.get(doc);
+            double similarity = (matches * 100.0) / grams.size();
+
+            System.out.println("Found " + matches + " matching n-grams with \"" + doc + "\"");
+
+            System.out.printf("Similarity: %.1f%% ", similarity);
+
+            if (similarity > 50)
+                System.out.println("(PLAGIARISM DETECTED)");
+            else if (similarity > 10)
+                System.out.println("(suspicious)");
+            else
+                System.out.println("(safe)");
         }
     }
 
     public static void main(String[] args) {
 
-        String shortURL = shortenURL("https://google.com");
+        // existing documents
+        String essay1 = "machine learning improves systems by learning from data automatically";
+        String essay2 = "learning from data automatically improves machine intelligence systems";
 
-        System.out.println("Short URL: " + shortURL);
+        addDocument("essay_089.txt", essay1);
+        addDocument("essay_092.txt", essay2);
 
-        System.out.println(redirect(shortURL));
-        System.out.println(redirect(shortURL));
+        // new essay
+        String newEssay = "machine learning improves systems by learning from data automatically and helps automation";
 
-        printStats();
+        analyzeDocument("essay_123.txt", newEssay);
     }
 }
