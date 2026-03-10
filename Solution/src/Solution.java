@@ -1,78 +1,79 @@
-import java.util.HashMap;
+import java.util.*;
 
-class TokenBucket {
-
-    int tokens;
-    int maxTokens;
-    long lastRefillTime;
-    int refillRate; // tokens per second
-
-    TokenBucket(int maxTokens, int refillRate) {
-        this.maxTokens = maxTokens;
-        this.tokens = maxTokens;
-        this.refillRate = refillRate;
-        this.lastRefillTime = System.currentTimeMillis();
-    }
-
-    void refill() {
-        long now = System.currentTimeMillis();
-        long elapsed = (now - lastRefillTime) / 1000;
-
-        int tokensToAdd = (int) (elapsed * refillRate);
-
-        if (tokensToAdd > 0) {
-            tokens = Math.min(maxTokens, tokens + tokensToAdd);
-            lastRefillTime = now;
-        }
-    }
-
-    boolean allowRequest() {
-        refill();
-
-        if (tokens > 0) {
-            tokens--;
-            return true;
-        }
-
-        return false;
-    }
+class TrieNode {
+    Map<Character, TrieNode> children = new HashMap<>();
+    boolean isEnd = false;
 }
 
 public class Solution{
 
-    static HashMap<String, TokenBucket> clients = new HashMap<>();
+    TrieNode root = new TrieNode();
+    HashMap<String, Integer> frequency = new HashMap<>();
 
-    static int LIMIT = 1000;
-    static int REFILL_RATE = 1000 / 3600; // tokens per second
+    // Insert query into trie
+    public void insert(String query) {
 
-    static void checkRateLimit(String clientId) {
+        TrieNode node = root;
 
-        clients.putIfAbsent(clientId, new TokenBucket(LIMIT, REFILL_RATE));
+        for (char c : query.toCharArray()) {
+            node.children.putIfAbsent(c, new TrieNode());
+            node = node.children.get(c);
+        }
 
-        TokenBucket bucket = clients.get(clientId);
+        node.isEnd = true;
 
-        if (bucket.allowRequest()) {
-            System.out.println("Allowed (" + bucket.tokens + " requests remaining)");
-        } else {
-            System.out.println("Denied (0 requests remaining, retry later)");
+        frequency.put(query, frequency.getOrDefault(query, 0) + 1);
+    }
+
+    // DFS to collect suggestions
+    void collect(TrieNode node, String prefix, List<String> results) {
+
+        if (node.isEnd)
+            results.add(prefix);
+
+        for (char c : node.children.keySet()) {
+            collect(node.children.get(c), prefix + c, results);
         }
     }
 
-    static void getRateLimitStatus(String clientId) {
+    // Search prefix suggestions
+    public List<String> search(String prefix) {
 
-        TokenBucket bucket = clients.get(clientId);
+        TrieNode node = root;
 
-        System.out.println("{used: " + (LIMIT - bucket.tokens) +
-                ", limit: " + LIMIT +
-                ", reset: " + (bucket.lastRefillTime + 3600000) + "}");
+        for (char c : prefix.toCharArray()) {
+            if (!node.children.containsKey(c))
+                return new ArrayList<>();
+            node = node.children.get(c);
+        }
+
+        List<String> results = new ArrayList<>();
+        collect(node, prefix, results);
+
+        // Sort by frequency
+        results.sort((a, b) -> frequency.get(b) - frequency.get(a));
+
+        return results.subList(0, Math.min(10, results.size()));
     }
 
     public static void main(String[] args) {
 
-        checkRateLimit("abc123");
-        checkRateLimit("abc123");
-        checkRateLimit("abc123");
+        AutocompleteSystem system = new AutocompleteSystem();
 
-        getRateLimitStatus("abc123");
+        system.insert("java tutorial");
+        system.insert("javascript");
+        system.insert("java tutorial");
+        system.insert("java download");
+        system.insert("java download");
+        system.insert("java download");
+
+        List<String> suggestions = system.search("jav");
+
+        int rank = 1;
+
+        for (String s : suggestions) {
+            System.out.println(rank + ". " + s + " (" + system.frequency.get(s) + " searches)");
+            rank++;
+        }
     }
 }
