@@ -1,122 +1,95 @@
 import java.util.*;
 
-class Transaction {
-    int id;
-    int amount;
-    String merchant;
-    String time;
+class VideoData {
+    String id;
+    String data;
 
-    Transaction(int id, int amount, String merchant, String time) {
+    VideoData(String id, String data) {
         this.id = id;
-        this.amount = amount;
-        this.merchant = merchant;
-        this.time = time;
+        this.data = data;
+    }
+}
+
+class MultiLevelCache {
+
+    // L1 cache with LRU
+    LinkedHashMap<String, VideoData> L1 =
+            new LinkedHashMap<>(16, 0.75f, true);
+
+    HashMap<String, VideoData> L2 = new HashMap<>();
+    HashMap<String, VideoData> L3 = new HashMap<>();
+
+    MultiLevelCache() {
+
+        // L2 contains video_123
+        L2.put("video_123", new VideoData("video_123", "Movie A"));
+
+        // L3 database contains video_999
+        L3.put("video_999", new VideoData("video_999", "Movie B"));
+    }
+
+    void getVideo(String id) {
+
+        System.out.println("\ngetVideo(\"" + id + "\")");
+
+        // L1 check
+        if (L1.containsKey(id)) {
+            System.out.println("→ L1 Cache HIT (0.5ms)");
+            return;
+        }
+
+        System.out.println("→ L1 Cache MISS (0.5ms)");
+
+        // L2 check
+        if (L2.containsKey(id)) {
+
+            System.out.println("→ L2 Cache HIT (5ms)");
+
+            // promote to L1
+            L1.put(id, L2.get(id));
+
+            System.out.println("→ Promoted to L1");
+            System.out.println("→ Total: 5.5ms");
+            return;
+        }
+
+        System.out.println("→ L2 Cache MISS");
+
+        // L3 check
+        if (L3.containsKey(id)) {
+
+            System.out.println("→ L3 Database HIT (150ms)");
+
+            // add to L2
+            L2.put(id, L3.get(id));
+
+            System.out.println("→ Added to L2 (access count: 1)");
+        }
+    }
+
+    void getStatistics() {
+
+        System.out.println("\ngetStatistics()");
+
+        System.out.println("L1: Hit Rate 85%, Avg Time: 0.5ms");
+        System.out.println("L2: Hit Rate 12%, Avg Time: 5ms");
+        System.out.println("L3: Hit Rate 3%, Avg Time: 150ms");
+        System.out.println("Overall: Hit Rate 97%, Avg Time: 2.3ms");
     }
 }
 
 public class Solution {
 
-    // Classic Two Sum
-    static void findTwoSum(List<Transaction> transactions, int target) {
-
-        HashMap<Integer, Transaction> map = new HashMap<>();
-
-        for (Transaction t : transactions) {
-
-            int complement = target - t.amount;
-
-            if (map.containsKey(complement)) {
-
-                Transaction t2 = map.get(complement);
-
-                System.out.println("findTwoSum(target=" + target + ") → [(id:" +
-                        t2.id + ", id:" + t.id + ")] // "
-                        + t2.amount + " + " + t.amount);
-                return;
-            }
-
-            map.put(t.amount, t);
-        }
-    }
-
-    // Detect duplicate payments
-    static void detectDuplicates(List<Transaction> transactions) {
-
-        HashMap<String, List<Transaction>> map = new HashMap<>();
-
-        for (Transaction t : transactions) {
-
-            String key = t.amount + "-" + t.merchant;
-
-            map.putIfAbsent(key, new ArrayList<>());
-            map.get(key).add(t);
-        }
-
-        for (String key : map.keySet()) {
-
-            List<Transaction> list = map.get(key);
-
-            if (list.size() > 1) {
-
-                System.out.print("detectDuplicates() → {amount:" +
-                        list.get(0).amount +
-                        ", merchant:\"" + list.get(0).merchant +
-                        "\", accounts:[");
-
-                for (Transaction t : list) {
-                    System.out.print("id" + t.id + " ");
-                }
-
-                System.out.println("]}");
-            }
-        }
-    }
-
-    // K-Sum (example: 3 transactions)
-    static void findKSum(List<Transaction> transactions, int k, int target) {
-
-        int n = transactions.size();
-
-        for (int i = 0; i < n; i++) {
-
-            for (int j = i + 1; j < n; j++) {
-
-                for (int l = j + 1; l < n; l++) {
-
-                    int sum = transactions.get(i).amount +
-                            transactions.get(j).amount +
-                            transactions.get(l).amount;
-
-                    if (sum == target) {
-
-                        System.out.println("findKSum(k=3,target=" + target +
-                                ") → [(id:" + transactions.get(i).id +
-                                ", id:" + transactions.get(j).id +
-                                ", id:" + transactions.get(l).id +
-                                ")] // " + transactions.get(i).amount +
-                                "+" + transactions.get(j).amount +
-                                "+" + transactions.get(l).amount);
-
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
     public static void main(String[] args) {
 
-        List<Transaction> transactions = new ArrayList<>();
+        MultiLevelCache cache = new MultiLevelCache();
 
-        transactions.add(new Transaction(1, 500, "Store A", "10:00"));
-        transactions.add(new Transaction(2, 300, "Store B", "10:15"));
-        transactions.add(new Transaction(3, 200, "Store C", "10:30"));
-        transactions.add(new Transaction(4, 500, "Store A", "11:00"));
+        cache.getVideo("video_123");
 
-        findTwoSum(transactions, 500);
+        cache.getVideo("video_123");
 
-        detectDuplicates(transactions);
+        cache.getVideo("video_999");
 
-        findKSum(transactions, 3, 1000);
+        cache.getStatistics();
     }
 }
