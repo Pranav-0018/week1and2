@@ -2,43 +2,47 @@ import java.util.*;
 
 public class Solution{
 
-    static HashMap<String, Set<Integer>> ngramTable = new HashMap<>();
+    static HashMap<String, String> shortToLong = new HashMap<>();
+    static HashMap<String, Integer> clickCount = new HashMap<>();
 
-    static void storeDocument(int id, String text) {
+    static String shortenURL(String longURL) {
 
-        String[] words = text.split(" ");
+        String shortURL = "url" + shortToLong.size();
 
-        for (int i = 0; i < words.length - 2; i++) {
+        shortToLong.put(shortURL, longURL);
+        clickCount.put(shortURL, 0);
 
-            String gram = words[i] + " " + words[i + 1] + " " + words[i + 2];
-
-            ngramTable.putIfAbsent(gram, new HashSet<>());
-            ngramTable.get(gram).add(id);
-        }
+        return shortURL;
     }
 
-    static void findMatches(String text) {
+    static String redirect(String shortURL) {
 
-        String[] words = text.split(" ");
+        if (shortToLong.containsKey(shortURL)) {
 
-        for (int i = 0; i < words.length - 2; i++) {
+            clickCount.put(shortURL, clickCount.get(shortURL) + 1);
 
-            String gram = words[i] + " " + words[i + 1] + " " + words[i + 2];
+            return shortToLong.get(shortURL);
+        }
 
-            if (ngramTable.containsKey(gram)) {
+        return "URL not found";
+    }
 
-                for (int id : ngramTable.get(gram)) {
-                    System.out.println("Match found with document " + id);
-                }
-            }
+    static void printStats() {
+
+        for (String key : clickCount.keySet()) {
+            System.out.println(key + " -> " + clickCount.get(key) + " clicks");
         }
     }
 
     public static void main(String[] args) {
 
-        storeDocument(1, "data structures and algorithms are important");
-        storeDocument(2, "machine learning and data structures");
+        String shortURL = shortenURL("https://google.com");
 
-        findMatches("data structures and algorithms");
+        System.out.println("Short URL: " + shortURL);
+
+        System.out.println(redirect(shortURL));
+        System.out.println(redirect(shortURL));
+
+        printStats();
     }
 }
