@@ -1,33 +1,49 @@
 import java.util.*;
 
+class DNSEntry{
+    String ip;
+    long expiry;
+
+    DNSEntry(String ip,long expiry){
+        this.ip=ip;
+        this.expiry=expiry;
+    }
+}
+
 public class Solution{
 
-    static HashMap<String,Integer> stock = new HashMap<>();
-    static Queue<Integer> waitingList = new LinkedList<>();
+    static HashMap<String,DNSEntry> cache = new HashMap<>();
 
-    static void checkStock(String product){
-        System.out.println("Stock: "+stock.get(product));
-    }
+    static String resolve(String domain){
 
-    static void purchaseItem(String product,int userId){
+        long now = System.currentTimeMillis();
 
-        if(stock.get(product)>0){
-            stock.put(product, stock.get(product)-1);
-            System.out.println("Purchase successful. Remaining: "+stock.get(product));
+        if(cache.containsKey(domain)){
+
+            DNSEntry entry = cache.get(domain);
+
+            if(entry.expiry > now){
+                System.out.println("Cache HIT");
+                return entry.ip;
+            }
+            else{
+                System.out.println("Cache EXPIRED");
+                cache.remove(domain);
+            }
         }
-        else{
-            waitingList.add(userId);
-            System.out.println("Out of stock. Added to waiting list position "+waitingList.size());
-        }
+
+        System.out.println("Cache MISS");
+
+        String ip="172.217.14.206";
+
+        cache.put(domain,new DNSEntry(ip, now + 300000));
+
+        return ip;
     }
 
     public static void main(String[] args){
 
-        stock.put("IPHONE15_256GB",100);
-
-        checkStock("IPHONE15_256GB");
-
-        purchaseItem("IPHONE15_256GB",12345);
-        purchaseItem("IPHONE15_256GB",67890);
+        System.out.println(resolve("google.com"));
+        System.out.println(resolve("google.com"));
     }
 }
